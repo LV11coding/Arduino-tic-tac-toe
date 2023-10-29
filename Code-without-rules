@@ -1,0 +1,170 @@
+  #include <Adafruit_NeoPixel.h>
+  #include "mega2560_pinout.h"
+
+  #define num 8
+  #define mtrxPin DP02
+  #define MIN_RED 900
+  #define MAX_RED 1023
+  #define MIN_GREEN 700
+  #define MAX_GREEN 800
+
+
+  Adafruit_NeoPixel matrix(64, mtrxPin, NEO_GRB + NEO_KHZ800);
+
+  const int BOARD_SIZE = 3;
+
+  int pinout[3][3] = {
+    { AP00, AP02, AP04 },
+    { AP06, AP08, AP10 },
+    { AP12, AP14, AP09 }
+  };
+
+  const int numberOfRows = 3;
+  const int numberOfCols = 3;
+  char boardState[numberOfRows][numberOfCols] = {{'2', '1', '2'}, 
+                                                {'2', '1', '1'}, 
+                                                {'1', '1', '2'}};
+
+  uint32_t red = matrix.Color(80, 0, 0);
+  uint32_t green = matrix.Color(0, 80, 0);
+  uint32_t blue = matrix.Color(0, 0, 80);
+  uint32_t white = matrix.Color(80, 80, 80);
+
+  const char p1 = '1';
+  const char p2 = '2';
+  const char off = '-';
+
+  void TheMatrix(char boardState[3][3]);
+
+  int currentread;
+
+  void readPins(int pinout[3][3], char boardState[3][3]) {
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+        currentread = analogRead(pinout[i][j]);
+        if (currentread < MIN_GREEN) {
+          boardState[i][j] = '-';
+        }
+        if (currentread > MIN_RED && currentread < MAX_RED) {
+          boardState[i][j] = '1';
+        }
+        if (currentread > MIN_GREEN && currentread < MAX_GREEN) {
+          boardState[i][j] = '2';
+        }
+      }
+    }
+  }
+
+  void setup() {
+    pinMode(AP00, INPUT);
+    pinMode(AP02, INPUT);
+    pinMode(AP04, INPUT);
+    pinMode(AP06, INPUT);
+    pinMode(AP08, INPUT);
+    pinMode(AP10, INPUT);
+    pinMode(AP12, INPUT);
+    pinMode(AP14, INPUT);
+    pinMode(AP09, INPUT);
+    pinMode(mtrxPin, OUTPUT);
+    Serial.begin(9600);
+    matrix.begin();
+    matrix.setBrightness(25);
+  }
+
+  void loop() {
+    bool has_0 = 0;
+    readPins(pinout, boardState);
+    TheMatrix(boardState);
+
+      // Determine the winner
+    char winner = determineWinner(boardState);
+    if (winner == p1) {
+      Serial.println("X wins!");
+    } else if (winner == p2) {
+      Serial.println("O wins!");
+    } else {
+      for(int i = 0; i < BOARD_SIZE; i++){
+        for(int j = 0; j < BOARD_SIZE; j++){
+          if (boardState[i][j] == off){
+            has_0 = 1;
+          }
+        }
+      }
+      if (has_0 == 0){
+        Serial.println("It's a draw!");
+      }
+    }
+    // Serial.println(analogRead(AP00));
+
+  }
+
+  void drawMatrix(int row, int col, char player){
+    int mtrxRow = row * 3;
+    int mtrxCol = col * 3;
+
+    int pixel1 = num * mtrxRow + mtrxCol;
+    int pixel2 = num * mtrxRow + mtrxCol + 1;
+    int pixel3 = num * (mtrxRow + 1) + mtrxCol;
+    int pixel4 = num * (mtrxRow + 1) + mtrxCol + 1;
+
+
+    if (player == p1){
+      matrix.setPixelColor(pixel1, red);
+      matrix.setPixelColor(pixel2, red);
+      matrix.setPixelColor(pixel3, red);
+      matrix.setPixelColor(pixel4, red);   
+    }
+    else if (player == p2){
+      matrix.setPixelColor(pixel1, green);
+      matrix.setPixelColor(pixel2, green);
+      matrix.setPixelColor(pixel3, green);
+      matrix.setPixelColor(pixel4, green); 
+    }
+    else if (player == off){
+      matrix.setPixelColor(pixel1, white);
+      matrix.setPixelColor(pixel2, white);
+      matrix.setPixelColor(pixel3, white);
+      matrix.setPixelColor(pixel4, white); 
+    }
+    matrix.show();
+  }
+
+  void TheMatrix(char State[3][3]){
+    for (int i = 0; i < 3; i++){
+      for (int j = 0; j < 3; j++){
+        drawMatrix(i, j, State[i][j]);
+      }
+    }
+  }
+
+
+
+  // Function to determine the winner
+  char determineWinner(char board[3][3]) {
+    // Check rows
+    for (int i = 0; i < BOARD_SIZE; i++) {
+      if (board[i][0] != '-' && board[i][0] == board[i][1] && board[i][0] == board[i][2]) {
+        return board[i][0];
+      }
+    }
+
+    // Check columns
+    for (int j = 0; j < BOARD_SIZE; j++) {
+      if (board[0][j] != '-' && board[0][j] == board[1][j] && board[0][j] == board[2][j]) {
+        return board[0][j];
+      }
+    }
+
+    // Check diagonals
+    if (board[0][0] != '-' && board[0][0] == board[1][1] && board[0][0] == board[2][2]) {
+      return board[0][0];
+    }
+
+    if (board[0][2] != '-' && board[0][2] == board[1][1] && board[0][2] == board[2][0]) {
+      return board[0][2];
+    }
+
+    // No winner
+    return '0';
+
+  }
